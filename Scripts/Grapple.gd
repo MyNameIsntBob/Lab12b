@@ -13,17 +13,18 @@ func _ready():
 	movement = Vector2(0, 0)
 	pass # Replace with function body.
 
+func retract():
+	self.queue_free()
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta):
 			
 	var collision = self.move_and_collide(movement)
 		
-	if (collision or !Input.is_action_pressed("ui_down")):
-		if (!collision or collision.collider.name != "Pipes"):
-			self.queue_free()
+	if (collision):
+		if (collision.collider.name != "Pipes"):
+			retract()
 		else:
-#			print("TellPlayer to come to me")
 			find_parent("Master").find_node("Player").go_to_pipe(self.get_global_transform().get_origin())
 	else:
 		movement.y = -speed * delta

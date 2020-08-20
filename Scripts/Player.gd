@@ -38,7 +38,7 @@ var crawlRight = false
 var movement
 var jumpAgain = false
 
-var state = "Normal"
+var state = NORMAL
 
 var grapple
 
@@ -46,21 +46,6 @@ var grapple
 func _ready():
 	movement = Vector2(0, 0)
 	pass # Replace with function body.
-
-
-func grapple():
-	grapple = GRAPPLE.instance()
-	grapple.set_position($Position2D.get_global_position())
-	find_parent("Master").add_child(grapple)
-
-
-func go_to_pipe(position):
-	if (grapple):
-		grapple.queue_free()
-	
-	self.set_position(position)
-	
-	state = "Pipe"
 
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
@@ -78,7 +63,7 @@ func _process(delta):
 
 func pipeCrawl(delta):
 	if (Input.is_action_just_pressed("ui_down")):
-		state="Normal"
+		state=NORMAL
 	
 	movement = Vector2(0, 0)
 	
@@ -87,12 +72,37 @@ func pipeCrawl(delta):
 	if (Input.is_action_pressed("ui_right") and crawlRight):
 		movement.x += moveSpeed
 	
+func startGrappling():
+	state=GRAPPLING
+	grapple()
+
 func grappling():
+	if (grapple == null):
+		state = NORMAL
+	
+	if (!Input.is_action_pressed("ui_up")):
+		state = NORMAL
+		grapple.retract()
 	pass	
 	
+func grapple():
+	grapple = GRAPPLE.instance()
+	grapple.set_position($Position2D.get_global_position())
+	find_parent("Master").add_child(grapple)
+
+
+func go_to_pipe(position):
+	if state == GRAPPLING:
+		if (grapple):
+			grapple.queue_free()
+		
+		self.set_position(position)
+	
+		state = PIPECRAWL
+	
 func normal(delta):
-	if (Input.is_action_just_pressed("ui_down") && grapple == null):
-		grapple()
+	if (Input.is_action_just_pressed("ui_up") && grapple == null):
+		startGrappling()
 	
 	if (!self.is_on_floor()):
 		jumpPaddingCounter -= delta
@@ -114,17 +124,17 @@ func normal(delta):
 	else:
 		cancelJumpCounter -= delta
 	
-	if (Input.is_action_just_pressed("ui_up")):
+	if (Input.is_action_just_pressed("ui_jump")):
 		cancelJumpCounter = cancelJump
 		jumpAgain = true
 	
-	if (self.is_on_floor() or jumpPaddingCounter > 0) and (Input.is_action_just_pressed("ui_up") or jumpAgain):
+	if (self.is_on_floor() or jumpPaddingCounter > 0) and (Input.is_action_just_pressed("ui_jump") or jumpAgain):
 		jumpAgain = false
 		movement.y = -jumpForce
 		jumpPaddingCounter = 0
 		jumpTimeCounter = jumpTime
 	
-	if (Input.is_action_pressed("ui_up")):
+	if (Input.is_action_pressed("ui_jump")):
 		if jumpTimeCounter > 0:
 			movement.y = -jumpForce
 			jumpTimeCounter -= delta

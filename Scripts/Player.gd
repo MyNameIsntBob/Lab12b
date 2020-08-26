@@ -20,9 +20,9 @@ enum {
 
 const GRAPPLE = preload("res://Prefabs/Grapple.tscn")
 
-var moveSpeed = 100
-var gravity = 10
-var jumpForce = 150
+var moveSpeed = 150
+var gravity = 20
+var jumpForce = 300
 
 var jumpPadding = 0.1
 var jumpPaddingCounter = 0.0
@@ -80,6 +80,8 @@ func grappling():
 	if (grapple == null):
 		state = NORMAL
 	
+	movement.x = 0
+	
 	if (!Input.is_action_pressed("ui_up")):
 		state = NORMAL
 		grapple.retract()
@@ -90,6 +92,8 @@ func grapple():
 	grapple.set_position($Position2D.get_global_position())
 	find_parent("Master").add_child(grapple)
 
+func hurt(damage):
+	print("Ouch")
 
 func go_to_pipe(position):
 	if state == GRAPPLING:

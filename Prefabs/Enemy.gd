@@ -6,9 +6,11 @@ enum {
 	SEARCH
 }
 
-var jumpForce = 200
-var gravity = 10
-var moveSpeed = 40
+const BULLET = preload("res://Prefabs/Bullet.tscn")
+
+var jumpForce = 400
+var gravity = 20
+var moveSpeed = 50
 var targetPadding = 0.5
 
 var searchTime = 20
@@ -16,6 +18,8 @@ var searchCounter = 0.0
 var searchArea = 100
 
 var shootDistance = 80
+var shootTimer = 0.0
+var shootDelay = 3
 
 var playerInCone
 var playerLastPos
@@ -30,12 +34,16 @@ var patrolArea = []
 var wallRight = false
 var wallLeft = false
 
+var gun
+
 # Called when the node enters the scene tree for the first time.
 func _ready():
+	gun = find_node("Gun")
+	target = 0
 	startPatrol()
 	movement = Vector2(0, 0)
-	target = 0
-	targetPosition = get_node("Patrol").get_child(target).position
+#	target = 0
+#	targetPosition = get_node("Patrol").get_child(target).position
 	pass # Replace with function body.
 
 func moveLeft():
@@ -68,6 +76,10 @@ func _process(delta):
 			search(delta)
 			light2D.color = Color(255, 100, 0)
 	
+	
+	if shootTimer >= 0:
+		shootTimer -= delta
+	
 	if (!self.is_on_floor()):
 		movement.y += gravity
 		
@@ -94,9 +106,19 @@ func nextTarget():
 func lookTowards(location):
 	$FlashLight.look_at(location)
 
+func shoot():
+	shootTimer = shootDelay
+	var bullet = BULLET.instance()
+	bullet.set_position(gun.get_global_position())
+	bullet.rotation = $FlashLight.rotation
+	find_parent("Master").add_child(bullet)
+	
 func attack():
 	lookTowards(targetPosition)
 	
+	if shootTimer <= 0:
+		shoot()
+		
 	if playerInCone != null:
 		targetPlayer()
 	
@@ -118,6 +140,7 @@ func startPatrol():
 	for spot in $Patrol.get_children():
 		patrolArea.append(spot.position)
 	state = PATROL
+	nextTarget()
 
 func patrol():
 	lookTowards(targetPosition)

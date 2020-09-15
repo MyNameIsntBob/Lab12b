@@ -26,6 +26,7 @@ var playerLastPos
 
 var target
 var targetPosition
+var currentPath
 var state = PATROL
 var movement
 
@@ -35,6 +36,13 @@ var wallRight = false
 var wallLeft = false
 
 var gun
+
+onready var pathFinder = find_parent("Master").get_node("PathFinder")
+
+func getPath(pos):
+	currentPath = pathFinder.findPath(position, pos)
+	
+
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
@@ -90,6 +98,9 @@ func _process(delta):
 	self.move_and_slide(movement, Vector2(0, -1))
 	
 func targetPlayer():
+	if playerInCone.visible == false:
+		return
+	
 	var space_state = get_world_2d().direct_space_state
 	var result = space_state.intersect_ray(position, playerInCone.position, [self], collision_mask)
 	if (result and result.collider.name == 'Player'):

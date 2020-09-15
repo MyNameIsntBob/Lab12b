@@ -1,9 +1,11 @@
-extends KinematicBody2D
+extends "res://Scripts/Character.gd"
 
 enum {
 	NORMAL,
 	PIPECRAWL,
-	GRAPPLING
+	GRAPPLING, 
+	DEAD,
+	HIDDEN
 }
 
 # Declare member variables here. Examples:
@@ -21,7 +23,6 @@ enum {
 const GRAPPLE = preload("res://Prefabs/Grapple.tscn")
 
 var moveSpeed = 150
-var gravity = 20
 var jumpForce = 300
 
 var jumpPadding = 0.1
@@ -35,16 +36,22 @@ var cancelJumpCounter = 0.0
 
 var crawlLeft = false
 var crawlRight = false
-var movement
 var jumpAgain = false
 
-var state = NORMAL
+var maxHp = 3
+var hp
+
+var interactable = []
 
 var grapple
 
+var default_layer
+
 # Called when the node enters the scene tree for the first time.
 func _ready():
-	movement = Vector2(0, 0)
+	state = NORMAL
+	default_layer = self.get_collision_layer()
+	hp = maxHp
 	pass # Replace with function body.
 
 
@@ -57,11 +64,52 @@ func _process(delta):
 			pipeCrawl(delta)
 		GRAPPLING:
 			grappling()
+		DEAD:
+			dead()
+		HIDDEN:
+			hidden()
 	
-	self.move_and_slide(movement, Vector2(0, -1))
+	if hp <= 0:
+		die()
+
+func interact():
+	var closest
+	var minDist = -1
+	for body in interactable:
+		var dist = self.get_global_position().distance_to(body.get_global_position())
+		if minDist < 0 or minDist < dist:
+			closest = body
+	if closest != null:
+		set_hide(closest.position)
+
+	else:
+		print("Nothing to interact with")
+
+func set_hide(location):
+	self.hide()
+	set_collision_layer(0)
+	self.movement = Vector2(0, 0)
+	self.position = location
+	state = HIDDEN
 	
 
+func hidden():
+	canFall = false
+	if Input.is_action_just_pressed("ui_interact") or Input.is_action_just_pressed("ui_jump"):
+		state = NORMAL
+		self.show()
+		self.set_collision_layer(default_layer)
+
+func die():
+	movement = Vector2(0, 0)
+	state = DEAD
+
+func dead():
+	canFall = true
+	pass
+
 func pipeCrawl(delta):
+	canFall = false
 	if (Input.is_action_just_pressed("ui_down")):
 		state=NORMAL
 	
@@ -77,6 +125,7 @@ func startGrappling():
 	grapple()
 
 func grappling():
+	canFall = true
 	if (grapple == null):
 		state = NORMAL
 	
@@ -93,7 +142,7 @@ func grapple():
 	find_parent("Master").add_child(grapple)
 
 func hurt(damage):
-	print("Ouch")
+	hp -= damage
 
 func go_to_pipe(position):
 	if state == GRAPPLING:
@@ -105,12 +154,16 @@ func go_to_pipe(position):
 		state = PIPECRAWL
 	
 func normal(delta):
+	canFall = true
 	if (Input.is_action_just_pressed("ui_up") && grapple == null):
 		startGrappling()
-	
+		
+	if Input.is_action_just_pressed("ui_interact") and is_on_floor():
+		interact()
+		
 	if (!self.is_on_floor()):
+		movement.y += gravity * delta
 		jumpPaddingCounter -= delta
-		movement.y += gravity
 	else:
 		movement.y = 0
 		jumpPaddingCounter = jumpPadding
@@ -170,4 +223,17 @@ func _on_rightArea_body_entered(body):
 
 func _on_rightArea_body_exited(body):
 	crawlRight = false
+	pass # Replace with function body.
+
+
+func _on_Interactable_body_entered(body):
+	interactable.append(body)
+	pass # Replace with function body.
+
+
+func _on_Interactable_body_exited(body):
+	for i in range(len(interactable)):
+		if interactable[i] == body:
+			interactable.remove(i)
+	
 	pass # Replace with function body.

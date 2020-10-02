@@ -1,6 +1,6 @@
 extends Node2D
 
-var cell_size = 16
+var cell_size = 32
 
 var jumpHeight = 1
 var jumpDistance = 2

@@ -1,4 +1,4 @@
-extends KinematicBody2D
+extends "res://Scripts/Character.gd"
 
 enum {
 	PATROL,
@@ -8,10 +8,7 @@ enum {
 
 const BULLET = preload("res://Prefabs/Bullet.tscn")
 
-var jumpForce = 400
-var gravity = 20
-var moveSpeed = 50
-var targetPadding = 0.5
+var targetPadding = 4
 
 var searchTime = 20
 var searchCounter = 0.0
@@ -26,53 +23,32 @@ var playerLastPos
 
 var target
 var targetPosition
+
+var currentTarget
 var currentPath
-var state = PATROL
-var movement
 
 var patrolArea = []
 
 var wallRight = false
 var wallLeft = false
 
-var gun
 
+onready var gun = find_node("Gun")
+onready var light2D = find_node("Light2D")
 onready var pathFinder = find_parent("Master").get_node("PathFinder")
-
-func getPath(pos):
-	currentPath = pathFinder.findPath(position, pos)
 	
-
-
 # Called when the node enters the scene tree for the first time.
 func _ready():
-	gun = find_node("Gun")
+	jumpForce = 150
+	jumpTime = 0.5
+	moveSpeed = 75
+	state = PATROL
 	target = 0
 	startPatrol()
-	movement = Vector2(0, 0)
-#	target = 0
-#	targetPosition = get_node("Patrol").get_child(target).position
-	pass # Replace with function body.
-
-func moveLeft():
-	if (wallLeft):
-		jump()
-	movement.x = -moveSpeed
-	
-func moveRight():
-	if (wallRight):
-		jump()
-	movement.x = moveSpeed
-
-func jump():
-	if (self.is_on_floor()):
-		movement.y = -jumpForce
-	pass
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta):
-	var light2D = find_node("Light2D")
-	
+	movement.x = 0
 	match state: 
 		PATROL:
 			patrol()
@@ -84,18 +60,28 @@ func _process(delta):
 			search(delta)
 			light2D.color = Color(255, 100, 0)
 	
-	
 	if shootTimer >= 0:
 		shootTimer -= delta
-	
-	if (!self.is_on_floor()):
-		movement.y += gravity
 		
 	if playerInCone != null:
 		targetPlayer()
 	light2D.energy = 0.1
 	
-	self.move_and_slide(movement, Vector2(0, -1))
+func goTo(pos):
+	if position.distance_to(pos) <= targetPadding:
+		return
+	
+	if (!currentPath or currentPath[-1] != pos) and currentTarget != pos:
+		getPath(pos)
+	
+	if !currentTarget or position.distance_to(currentTarget) <= targetPadding:
+		nextPoint() 
+	
+	if currentTarget:
+		if position.x > currentTarget.x:
+			moveLeft()
+		else:
+			moveRight() 
 	
 func targetPlayer():
 	if playerInCone.visible == false:
@@ -108,14 +94,31 @@ func targetPlayer():
 		state = ATTACK
 		targetPosition = playerInCone.position
 	
+func getPath(pos):
+	currentPath = pathFinder.findPath(position, pos)
+	nextPoint()
+
+func nextPoint():
+	if len(currentPath) == 0:
+		currentTarget = null
+		return
+		
+	currentTarget = currentPath.pop_front()
+	
+	if !currentTarget:
+		startJumping()
+		nextPoint()
+	
 func nextTarget():
 	target += 1
 	if target >= len(patrolArea):
 		target = 0
+	getPath(patrolArea[target])
 	targetPosition = patrolArea[target]
 	
 func lookTowards(location):
-	$FlashLight.look_at(location)
+	if (location):
+		$FlashLight.look_at(location)
 
 func shoot():
 	shootTimer = shootDelay
@@ -137,14 +140,7 @@ func attack():
 		startSearch()
 	
 	if self.position.distance_to(targetPosition) > shootDistance or !self.is_on_floor():
-		if position.x > targetPosition.x:
-			moveLeft()
-		else:
-			moveRight()
-	else:
-		movement.x = 0
-		pass
-#		Shoot
+		goTo(targetPosition)
 
 func startPatrol():
 	patrolArea = []
@@ -155,15 +151,12 @@ func startPatrol():
 
 func patrol():
 	lookTowards(targetPosition)
+	if targetPosition:
 	
-	if (position.x > targetPosition.x - targetPadding and position.x < targetPosition.x + targetPadding):
-		nextTarget()
-	
-	if position.x > targetPosition.x:
-		moveLeft()
-	else:
-		moveRight()
-	pass
+		if (position.x > targetPosition.x - targetPadding and position.x < targetPosition.x + targetPadding):
+			nextTarget()
+		
+		goTo(targetPosition)
 	
 func startSearch():
 	searchCounter = searchTime
@@ -182,10 +175,7 @@ func search(delta):
 	if (position.x > targetPosition.x - targetPadding and position.x < targetPosition.x + targetPadding):
 		nextTarget()
 	
-	if position.x > targetPosition.x:
-		moveLeft()
-	else:
-		moveRight()
+	goTo(targetPosition)
 
 # If the player eneters the light area
 func _on_Area2D_body_entered(body):
@@ -200,34 +190,3 @@ func _on_Area2D_body_exited(body):
 		playerInCone = null
 		playerLastPos = body.position
 	pass # Replace with function body.
-
-
-func _on_FrontArea_body_entered(body):
-	wallRight = true
-	pass # Replace with function body.
-
-func _on_FrontArea_body_exited(body):
-	wallRight = false
-	pass # Replace with function body.
-
-func _on_BackArea_body_entered(body):
-	wallLeft = true
-	pass # Replace with function body.
-
-func _on_BackArea_body_exited(body):
-	wallLeft = false
-	pass # Replace with function body.
-
-func _on_GroundArea_body_exited(body):
-	if (targetPosition.y <= self.position.y + 10):
-		jump()
-	pass # Replace with function body.
-
-
-
-
-
-
-
-
-

@@ -53,19 +53,21 @@ func _process(delta):
 		PATROL:
 			patrol()
 			light2D.color = Color(255, 255, 255)
+			light2D.energy = 0.05
 		ATTACK:
 			attack()
 			light2D.color = Color(255, 0, 0)
+			light2D.energy = 0.1
 		SEARCH:
 			search(delta)
 			light2D.color = Color(255, 100, 0)
+			light2D.energy = 0.08
 	
 	if shootTimer >= 0:
 		shootTimer -= delta
 		
 	if playerInCone != null:
 		targetPlayer()
-	light2D.energy = 0.1
 	
 func goTo(pos):
 	if position.distance_to(pos) <= targetPadding:
